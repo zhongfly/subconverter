@@ -3,6 +3,7 @@
 #include <numeric>
 #include <cmath>
 #include <climits>
+#include <regex>
 
 #include "config/regmatch.h"
 #include "generator/config/subexport.h"
@@ -28,6 +29,10 @@ extern string_array ss_ciphers, ssr_ciphers;
 const string_array clashr_protocols = {"origin", "auth_sha1_v4", "auth_aes128_md5", "auth_aes128_sha1", "auth_chain_a", "auth_chain_b"};
 const string_array clashr_obfs = {"plain", "http_simple", "http_post", "random_head", "tls1.2_ticket_auth", "tls1.2_ticket_fastauth"};
 const string_array clash_ssr_ciphers = {"rc4-md5", "aes-128-ctr", "aes-192-ctr", "aes-256-ctr", "aes-128-cfb", "aes-192-cfb", "aes-256-cfb", "chacha20-ietf", "xchacha20", "none"};
+static std::string forceQuoteRealityShortId(std::string yaml) {
+    std::regex loose(R"((short-id:\s*)([0-9A-Za-z]+)\b)");
+    return std::regex_replace(yaml, loose, "$1\"$2\"");
+}
 
 std::string vmessLinkConstruct(const std::string &remarks, const std::string &add, const std::string &port, const std::string &type, const std::string &id, const std::string &aid, const std::string &net, const std::string &path, const std::string &host, const std::string &tls)
 {
@@ -682,7 +687,6 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
             if (!x.PublicKey.empty() && !x.ShortID.empty()) {
                 singleproxy["reality-opts"]["public-key"] = x.PublicKey;
                 singleproxy["reality-opts"]["short-id"] = x.ShortID;
-                singleproxy["reality-opts"]["short-id"].SetStyle(YAML::DoubleQuoted);
                 singleproxy["client-fingerprint"] = "random";
             }
             if (!scv.is_undef())
@@ -819,16 +823,16 @@ std::string proxyToClash(std::vector<Proxy> &nodes, const std::string &base_conf
     proxyToClash(nodes, yamlnode, extra_proxy_group, clashR, ext);
 
     if(ext.nodelist)
-        return YAML::Dump(yamlnode);
+        return forceQuoteRealityShortId(YAML::Dump(yamlnode));
 
     /*
     if(ext.enable_rule_generator)
         rulesetToClash(yamlnode, ruleset_content_array, ext.overwrite_original_rules, ext.clash_new_field_name);
 
-    return YAML::Dump(yamlnode);
+    return forceQuoteRealityShortId(YAML::Dump(yamlnode));
     */
     if(!ext.enable_rule_generator)
-        return YAML::Dump(yamlnode);
+        return forceQuoteRealityShortId(YAML::Dump(yamlnode));
 
     if(!ext.managed_config_prefix.empty() || ext.clash_script)
     {
@@ -841,13 +845,13 @@ std::string proxyToClash(std::vector<Proxy> &nodes, const std::string &base_conf
         }
 
         renderClashScript(yamlnode, ruleset_content_array, ext.managed_config_prefix, ext.clash_script, ext.overwrite_original_rules, ext.clash_classical_ruleset);
-        return YAML::Dump(yamlnode);
+        return forceQuoteRealityShortId(YAML::Dump(yamlnode));
     }
 
     std::string output_content = rulesetToClashStr(yamlnode, ruleset_content_array, ext.overwrite_original_rules, ext.clash_new_field_name);
-    output_content.insert(0, YAML::Dump(yamlnode));
+    output_content.insert(0, forceQuoteRealityShortId(YAML::Dump(yamlnode)));
     //rulesetToClash(yamlnode, ruleset_content_array, ext.overwrite_original_rules, ext.clash_new_field_name);
-    //std::string output_content = YAML::Dump(yamlnode);
+    //std::string output_content = forceQuoteRealityShortId(YAML::Dump(yamlnode));
 
     return output_content;
 }
