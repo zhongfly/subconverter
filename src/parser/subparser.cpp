@@ -450,12 +450,8 @@ void explodeVmessConf(std::string content, std::vector<Proxy> &nodes)
 {
     Document json;
     rapidjson::Value nodejson, settings;
-    std::string group, ps, add, port, type, id, aid, net, path, host, edge, tls, cipher, subid, sni;
-    tribool udp, tfo, scv;
-    int configType;
     uint32_t index = nodes.size();
     std::map<std::string, std::string> subdata;
-    std::map<std::string, std::string>::iterator iter;
     std::string streamset = "streamSettings", tcpset = "tcpSettings", wsset = "wsSettings";
     regGetMatch(content, "((?i)streamsettings)", 2, 0, &streamset);
     regGetMatch(content, "((?i)tcpsettings)", 2, 0, &tcpset);
@@ -472,6 +468,8 @@ void explodeVmessConf(std::string content, std::vector<Proxy> &nodes)
             {
                 Proxy node;
                 nodejson = json["outbounds"][0];
+                std::string add, port, type, id, aid, net, path, host, edge, tls, cipher, sni;
+                tribool udp, tfo, scv;
                 add = GetMember(nodejson["settings"]["vnext"][0], "address");
                 port = GetMember(nodejson["settings"]["vnext"][0], "port");
                 if(port == "0")
@@ -541,6 +539,9 @@ void explodeVmessConf(std::string content, std::vector<Proxy> &nodes)
     for(uint32_t i = 0; i < json["vmess"].Size(); i++)
     {
         Proxy node;
+        std::string group, ps, add, port, type, id, aid, net, path, host, edge, tls, cipher, subid, sni;
+        tribool udp, tfo, scv;
+        int configType = 0;
         if(json["vmess"][i]["address"].IsNull() || json["vmess"][i]["port"].IsNull() || json["vmess"][i]["id"].IsNull())
             continue;
 
@@ -554,7 +555,7 @@ void explodeVmessConf(std::string content, std::vector<Proxy> &nodes)
 
         if(!subid.empty())
         {
-            iter = subdata.find(subid);
+            auto iter = subdata.find(subid);
             if(iter != subdata.end())
                 group = iter->second;
         }
@@ -673,16 +674,16 @@ void explodeSSD(std::string link, std::vector<Proxy> &nodes)
     else
         return;
 
-    rapidjson::Value singlenode;
     for(uint32_t i = 0; i < listCount; i++)
     {
+        rapidjson::Value singlenode;
+        std::string port = GetMember(jsondata, "port");
+        std::string method = GetMember(jsondata, "encryption");
+        std::string password = GetMember(jsondata, "password");
+        std::string plugin = GetMember(jsondata, "plugin");
+        std::string pluginopts = GetMember(jsondata, "plugin_options");
+        std::string server, remarks;
         //get default info
-        port = GetMember(jsondata, "port");
-        method = GetMember(jsondata, "encryption");
-        password = GetMember(jsondata, "password");
-        plugin = GetMember(jsondata, "plugin");
-        pluginopts = GetMember(jsondata, "plugin_options");
-
         //get server-specific info
         switch(listType)
         {
@@ -730,19 +731,19 @@ void explodeSSAndroid(std::string ss, std::vector<Proxy> &nodes)
     for(uint32_t i = 0; i < json["nodes"].Size(); i++)
     {
         Proxy node;
-        server = GetMember(json["nodes"][i], "server");
+        std::string server = GetMember(json["nodes"][i], "server");
         if(server.empty())
             continue;
-        ps = GetMember(json["nodes"][i], "remarks");
-        port = GetMember(json["nodes"][i], "server_port");
+        std::string ps = GetMember(json["nodes"][i], "remarks");
+        std::string port = GetMember(json["nodes"][i], "server_port");
         if(port == "0")
             continue;
         if(ps.empty())
             ps = server + ":" + port;
-        password = GetMember(json["nodes"][i], "password");
-        method = GetMember(json["nodes"][i], "method");
-        plugin = GetMember(json["nodes"][i], "plugin");
-        pluginopts = GetMember(json["nodes"][i], "plugin_opts");
+        std::string password = GetMember(json["nodes"][i], "password");
+        std::string method = GetMember(json["nodes"][i], "method");
+        std::string plugin = GetMember(json["nodes"][i], "plugin");
+        std::string pluginopts = GetMember(json["nodes"][i], "plugin_opts");
 
         ssConstruct(node, group, ps, server, port, password, method, plugin, pluginopts);
         node.Id = index;
@@ -754,7 +755,7 @@ void explodeSSAndroid(std::string ss, std::vector<Proxy> &nodes)
 void explodeSSConf(std::string content, std::vector<Proxy> &nodes)
 {
     Document json;
-    std::string ps, password, method, server, port, plugin, pluginopts, group = SS_DEFAULT_GROUP;
+    std::string group = SS_DEFAULT_GROUP;
     auto index = nodes.size();
 
     json.Parse(content.data());
@@ -768,18 +769,17 @@ void explodeSSConf(std::string content, std::vector<Proxy> &nodes)
     for(uint32_t i = 0; i < json[section].Size(); i++)
     {
         Proxy node;
-        ps = GetMember(json[section][i], "remarks");
-        port = GetMember(json[section][i], "server_port");
+        std::string ps = GetMember(json[section][i], "remarks");
+        std::string server = GetMember(json[section][i], "server");
+        std::string port = GetMember(json[section][i], "server_port");
         if(port == "0")
             continue;
         if(ps.empty())
             ps = server + ":" + port;
-
-        password = GetMember(json[section][i], "password");
-        method = GetMember(json[section][i], "method");
-        server = GetMember(json[section][i], "server");
-        plugin = GetMember(json[section][i], "plugin");
-        pluginopts = GetMember(json[section][i], "plugin_opts");
+        std::string password = GetMember(json[section][i], "password");
+        std::string method = GetMember(json[section][i], "method");
+        std::string plugin = GetMember(json[section][i], "plugin");
+        std::string pluginopts = GetMember(json[section][i], "plugin_opts");
 
         node.Id = index;
         ssConstruct(node, group, ps, server, port, password, method, plugin, pluginopts);
@@ -828,7 +828,6 @@ void explodeSSR(std::string ssr, Proxy &node)
 void explodeSSRConf(std::string content, std::vector<Proxy> &nodes)
 {
     Document json;
-    std::string remarks, group, server, port, method, password, protocol, protoparam, obfs, obfsparam, plugin, pluginopts;
     auto index = nodes.size();
 
     json.Parse(content.data());
@@ -838,22 +837,23 @@ void explodeSSRConf(std::string content, std::vector<Proxy> &nodes)
     if(json.HasMember("local_port") && json.HasMember("local_address")) //single libev config
     {
         Proxy node;
-        server = GetMember(json, "server");
-        port = GetMember(json, "server_port");
-        remarks = server + ":" + port;
-        method = GetMember(json, "method");
-        obfs = GetMember(json, "obfs");
-        protocol = GetMember(json, "protocol");
+        std::string server = GetMember(json, "server");
+        std::string port = GetMember(json, "server_port");
+        std::string remarks = server + ":" + port;
+        std::string method = GetMember(json, "method");
+        std::string obfs = GetMember(json, "obfs");
+        std::string protocol = GetMember(json, "protocol");
+        std::string password = GetMember(json, "password");
         if(find(ss_ciphers.begin(), ss_ciphers.end(), method) != ss_ciphers.end() && (obfs.empty() || obfs == "plain") && (protocol.empty() || protocol == "origin"))
         {
-            plugin = GetMember(json, "plugin");
-            pluginopts = GetMember(json, "plugin_opts");
+            std::string plugin = GetMember(json, "plugin");
+            std::string pluginopts = GetMember(json, "plugin_opts");
             ssConstruct(node, SS_DEFAULT_GROUP, remarks, server, port, password, method, plugin, pluginopts);
         }
         else
         {
-            protoparam = GetMember(json, "protocol_param");
-            obfsparam = GetMember(json, "obfs_param");
+            std::string protoparam = GetMember(json, "protocol_param");
+            std::string obfsparam = GetMember(json, "obfs_param");
             ssrConstruct(node, SSR_DEFAULT_GROUP, remarks, server, port, protocol, method, obfs, password, obfsparam, protoparam);
         }
         nodes.emplace_back(std::move(node));
@@ -863,24 +863,24 @@ void explodeSSRConf(std::string content, std::vector<Proxy> &nodes)
     for(uint32_t i = 0; i < json["configs"].Size(); i++)
     {
         Proxy node;
-        group = GetMember(json["configs"][i], "group");
+        std::string group = GetMember(json["configs"][i], "group");
         if(group.empty())
             group = SSR_DEFAULT_GROUP;
-        remarks = GetMember(json["configs"][i], "remarks");
-        server = GetMember(json["configs"][i], "server");
-        port = GetMember(json["configs"][i], "server_port");
+        std::string remarks = GetMember(json["configs"][i], "remarks");
+        std::string server = GetMember(json["configs"][i], "server");
+        std::string port = GetMember(json["configs"][i], "server_port");
         if(port == "0")
             continue;
         if(remarks.empty())
             remarks = server + ":" + port;
 
-        password = GetMember(json["configs"][i], "password");
-        method = GetMember(json["configs"][i], "method");
+        std::string password = GetMember(json["configs"][i], "password");
+        std::string method = GetMember(json["configs"][i], "method");
 
-        protocol = GetMember(json["configs"][i], "protocol");
-        protoparam = GetMember(json["configs"][i], "protocolparam");
-        obfs = GetMember(json["configs"][i], "obfs");
-        obfsparam = GetMember(json["configs"][i], "obfsparam");
+        std::string protocol = GetMember(json["configs"][i], "protocol");
+        std::string protoparam = GetMember(json["configs"][i], "protocolparam");
+        std::string obfs = GetMember(json["configs"][i], "obfs");
+        std::string obfsparam = GetMember(json["configs"][i], "obfsparam");
 
         ssrConstruct(node, group, remarks, server, port, protocol, method, obfs, password, obfsparam, protoparam);
         node.Id = index;
@@ -1219,27 +1219,25 @@ void explodeNetch(std::string netch, Proxy &node)
 
 void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
 {
-    std::string proxytype, ps, server, port, cipher, group, password, underlying_proxy; //common
-    std::string type = "none", id, aid = "0", net = "tcp", path, host, edge, tls, sni, mode; //vmess/vless
-    std::string plugin, pluginopts, pluginopts_mode, pluginopts_host, pluginopts_mux; //ss
-    std::string protocol, protoparam, obfs, obfsparam; //ssr
-    std::string user; //socks
-    std::string ip, ipv6, private_key, public_key, mtu; //wireguard
-    std::string ports, obfs_protocol, up, up_speed, down, down_speed, auth, auth_str,/* obfs, sni,*/ fingerprint, ca, ca_str, recv_window_conn, recv_window, disable_mtu_discovery, hop_interval, alpn; //hysteria
-    std::string obfs_password, cwnd; //hysteria2
-    std::string uuid,/*ip , password*/ heartbeat_interval, disable_sni, reduce_rtt, request_timeout, udp_relay_mode, congestion_controller, max_udp_relay_packet_size, max_open_streams, fast_open;   //TUIC
-    std::string idle_session_check_interval, idle_session_timeout, min_idle_session;
-    std::string flow, xtls, short_id;
-
-    string_array dns_server;
-    tribool udp, tfo, scv;
-    Node singleproxy;
     uint32_t index = nodes.size();
     const std::string section = yamlnode["proxies"].IsDefined() ? "proxies" : "Proxy";
     for(uint32_t i = 0; i < yamlnode[section].size(); i++)
     {
         Proxy node;
-        singleproxy = yamlnode[section][i];
+        Node singleproxy = yamlnode[section][i];
+        std::string proxytype, ps, server, port, cipher, group, password, underlying_proxy; //common
+        std::string type = "none", id, aid = "0", net = "tcp", path, host, edge, tls, sni, mode; //vmess/vless
+        std::string plugin, pluginopts, pluginopts_mode, pluginopts_host, pluginopts_mux; //ss
+        std::string protocol, protoparam, obfs, obfsparam; //ssr
+        std::string user; //socks/http
+        std::string ip, ipv6, private_key, public_key, mtu; //wireguard
+        std::string ports, obfs_protocol, up, up_speed, down, down_speed, auth, auth_str, fingerprint, ca, ca_str, recv_window_conn, recv_window, disable_mtu_discovery, hop_interval, alpn; //hysteria
+        std::string obfs_password, cwnd; //hysteria2
+        std::string uuid, heartbeat_interval, disable_sni, reduce_rtt, request_timeout, udp_relay_mode, congestion_controller, max_udp_relay_packet_size, max_open_streams, fast_open;   //TUIC
+        std::string idle_session_check_interval, idle_session_timeout, min_idle_session;
+        std::string flow, xtls, short_id;
+        string_array dns_server;
+        tribool udp, tfo, scv;
         singleproxy["type"] >>= proxytype;
         singleproxy["name"] >>= ps;
         singleproxy["server"] >>= server;
@@ -2775,10 +2773,6 @@ bool explodeSurge(std::string surge, std::vector<Proxy> &nodes)
 
 void explodeSSTap(std::string sstap, std::vector<Proxy> &nodes)
 {
-    std::string configType, group, remarks, server, port;
-    std::string cipher;
-    std::string user, pass;
-    std::string protocol, protoparam, obfs, obfsparam;
     Document json;
     uint32_t index = nodes.size();
     json.Parse(sstap.data());
@@ -2788,37 +2782,41 @@ void explodeSSTap(std::string sstap, std::vector<Proxy> &nodes)
     for(uint32_t i = 0; i < json["configs"].Size(); i++)
     {
         Proxy node;
-        json["configs"][i]["group"] >> group;
-        json["configs"][i]["remarks"] >> remarks;
-        json["configs"][i]["server"] >> server;
-        port = GetMember(json["configs"][i], "server_port");
+        std::string group = GetMember(json["configs"][i], "group");
+        std::string remarks = GetMember(json["configs"][i], "remarks");
+        std::string server = GetMember(json["configs"][i], "server");
+        std::string port = GetMember(json["configs"][i], "server_port");
         if(port == "0")
             continue;
 
         if(remarks.empty())
             remarks = server + ":" + port;
 
-        json["configs"][i]["password"] >> pass;
-        json["configs"][i]["type"] >> configType;
+        std::string pass = GetMember(json["configs"][i], "password");
+        std::string configType = GetMember(json["configs"][i], "type");
         switch(to_int(configType, 0))
         {
         case 5: //socks 5
-            json["configs"][i]["username"] >> user;
-            socksConstruct(node, group, remarks, server, port, user, pass);
+            {
+                std::string user = GetMember(json["configs"][i], "username");
+                socksConstruct(node, group, remarks, server, port, user, pass);
+            }
             break;
         case 6: //ss/ssr
-            json["configs"][i]["protocol"] >> protocol;
-            json["configs"][i]["obfs"] >> obfs;
-            json["configs"][i]["method"] >> cipher;
-            if(find(ss_ciphers.begin(), ss_ciphers.end(), cipher) != ss_ciphers.end() && protocol == "origin" && obfs == "plain") //is ss
             {
-                ssConstruct(node, group, remarks, server, port, pass, cipher, "", "");
-            }
-            else //is ssr cipher
-            {
-                json["configs"][i]["obfsparam"] >> obfsparam;
-                json["configs"][i]["protocolparam"] >> protoparam;
-                ssrConstruct(node, group, remarks, server, port, protocol, cipher, obfs, pass, obfsparam, protoparam);
+                std::string protocol = GetMember(json["configs"][i], "protocol");
+                std::string obfs = GetMember(json["configs"][i], "obfs");
+                std::string cipher = GetMember(json["configs"][i], "method");
+                if(find(ss_ciphers.begin(), ss_ciphers.end(), cipher) != ss_ciphers.end() && protocol == "origin" && obfs == "plain") //is ss
+                {
+                    ssConstruct(node, group, remarks, server, port, pass, cipher, "", "");
+                }
+                else //is ssr cipher
+                {
+                    std::string obfsparam = GetMember(json["configs"][i], "obfsparam");
+                    std::string protoparam = GetMember(json["configs"][i], "protocolparam");
+                    ssrConstruct(node, group, remarks, server, port, protocol, cipher, obfs, pass, obfsparam, protoparam);
+                }
             }
             break;
         default:
