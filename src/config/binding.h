@@ -47,6 +47,9 @@ namespace toml
                 case "round-robin"_hash:
                     conf.Strategy = BalanceStrategy::RoundRobin;
                     break;
+                case "sticky-sessions"_hash:
+                    conf.Strategy = BalanceStrategy::StickySessions;
+                    break;
                 }
                 if(v.contains("persistent"))
                     conf.Persistent = find_or(v, "persistent", conf.Persistent.get());
@@ -256,6 +259,10 @@ namespace INIBinding
                             break;
                         case "round-robin"_hash:
                             conf.Strategy = BalanceStrategy::RoundRobin;
+                            has_strategy = true;
+                            break;
+                        case "sticky-sessions"_hash:
+                            conf.Strategy = BalanceStrategy::StickySessions;
                             has_strategy = true;
                             break;
                         }
