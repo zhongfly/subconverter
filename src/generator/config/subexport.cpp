@@ -2393,7 +2393,7 @@ std::string proxyToLoon(std::vector<Proxy> &nodes, const std::string &base_conf,
             group += ",url=" + x.Url + ",interval=" + std::to_string(x.Interval);
             if(x.Type == ProxyGroupType::LoadBalance)
             {
-                group += ",algorithm=" + std::string(x.Strategy == BalanceStrategy::RoundRobin ? "round-robin" : "pcc");
+                group += ",algorithm=" + std::string(x.Strategy == BalanceStrategy::RoundRobin || x.Strategy == BalanceStrategy::StickySessions ? "round-robin" : "pcc");
                 if(x.Timeout > 0)
                     group += ",max-timeout=" + std::to_string(x.Timeout);
             }
