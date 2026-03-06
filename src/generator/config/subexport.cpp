@@ -700,6 +700,7 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
             if (!x.PublicKey.empty() && !x.ShortID.empty()) {
                 singleproxy["reality-opts"]["public-key"] = x.PublicKey;
                 singleproxy["reality-opts"]["short-id"] = x.ShortID;
+                singleproxy["reality-opts"]["short-id"].SetTag("str");
                 if (!x.ClientFingerprint.empty()) {
                     singleproxy["client-fingerprint"] = x.ClientFingerprint;
                 } else if (!x.Fingerprint.empty()) {
