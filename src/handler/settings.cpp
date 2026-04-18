@@ -75,6 +75,22 @@ toml::value parseToml(const std::string &content, const std::string &fname)
     return toml::parse(is, fname);
 }
 
+/**
+ * Detect whether content is likely in TOML format by looking for TOML array-table
+ * syntax ([[key]]) at the start of a line. This is a TOML-specific construct that
+ * does not appear in INI or YAML formats, making it a reliable heuristic.
+ * Used to avoid falling through to the INI parser (which would misinterpret
+ * [[key]] as a "Duplicate section" error) when the content is actually TOML.
+ */
+static bool contentLooksLikeToml(const std::string &content)
+{
+    // Check if [[...]] appears at the very start of the document
+    if(content.size() >= 2 && content[0] == '[' && content[1] == '[')
+        return true;
+    // Check if [[...]] appears at the start of any subsequent line
+    return content.find("\n[[") != std::string::npos;
+}
+
 void importItems(std::vector<toml::value> &root, const std::string &import_key, bool scope_limit = true)
 {
     std::string content;
@@ -1214,15 +1230,14 @@ int loadExternalConfig(std::string &path, ExternalConfig &ext)
 
     if(base_content.empty())
     {
-        writeLog(0, "Load external configuration failed. Reason: Empty or unavailable external config content", LOG_LEVEL_ERROR);
+        writeLog(0, "Load external configuration failed. Reason: Retrieved config content is empty (fetch failed, file is empty, or contained only a BOM)", LOG_LEVEL_ERROR);
         return -1;
     }
 
     // Detect TOML-like content: [[...]] array-table syntax appears at the start of a line in TOML.
     // INI files use single [section] headers and would never start a line with [[.
     // This is used to avoid misreporting TOML parse errors as misleading INI parse errors.
-    bool looksLikeToml = (base_content.size() >= 2 && base_content[0] == '[' && base_content[1] == '[') ||
-                         base_content.find("\n[[") != std::string::npos;
+    bool looksLikeToml = contentLooksLikeToml(base_content);
 
     try
     {
@@ -1258,7 +1273,7 @@ int loadExternalConfig(std::string &path, ExternalConfig &ext)
     // do not fall through to INI which would misinterpret TOML syntax.
     if(looksLikeToml)
     {
-        writeLog(0, "Load external configuration failed. Reason: TOML external config must define a non-zero 'version' field", LOG_LEVEL_ERROR);
+        writeLog(0, "Load external configuration failed. Reason: TOML external config parsed successfully but is missing a non-zero 'version' field", LOG_LEVEL_ERROR);
         return -1;
     }
 
