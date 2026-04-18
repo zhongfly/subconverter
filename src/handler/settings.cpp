@@ -1207,22 +1207,59 @@ int loadExternalConfig(std::string &path, ExternalConfig &ext)
     if(render_template(config, *ext.tpl_args, base_content, global.templatePath) != 0)
         base_content = config;
 
+    // Strip UTF-8 BOM (commonly added by Windows editors) before any parsing
+    removeUTF8BOM(base_content);
+    // Normalize CRLF to LF for cross-platform consistency
+    base_content = replaceAllDistinct(base_content, "\r\n", "\n");
+
+    if(base_content.empty())
+    {
+        writeLog(0, "Load external configuration failed. Reason: Empty or unavailable external config content", LOG_LEVEL_ERROR);
+        return -1;
+    }
+
+    // Detect TOML-like content: [[...]] array-table syntax appears at the start of a line in TOML.
+    // INI files use single [section] headers and would never start a line with [[.
+    // This is used to avoid misreporting TOML parse errors as misleading INI parse errors.
+    bool looksLikeToml = (base_content.size() >= 2 && base_content[0] == '[' && base_content[1] == '[') ||
+                         base_content.find("\n[[") != std::string::npos;
+
     try
     {
         YAML::Node yaml = YAML::Load(base_content);
         if(yaml.size() && yaml["custom"].IsDefined())
             return loadExternalYAML(yaml, ext);
+    }
+    catch (YAML::Exception &e)
+    {
+        //ignore YAML errors - content may be TOML or INI
+    }
+
+    try
+    {
         toml::value conf = parseToml(base_content, path);
         if(!conf.is_empty() && toml::find_or<int>(conf, "version", 0))
             return loadExternalTOML(conf, ext);
     }
-    catch (YAML::Exception &e)
-    {
-        //ignore
-    }
     catch (toml::exception &e)
     {
-        //ignore
+        if(looksLikeToml)
+        {
+            // Content uses TOML array-table syntax ([[...]]) but failed TOML parsing.
+            // Report the real TOML error instead of falling through to INI which would
+            // produce misleading errors like "Duplicate section" or "Empty document".
+            writeLog(0, "Load external configuration failed. Reason: " + std::string(e.what()), LOG_LEVEL_ERROR);
+            return -1;
+        }
+        //ignore TOML errors for content that doesn't look like TOML
+    }
+
+    // If content contains TOML array-table markers but didn't satisfy the version check,
+    // do not fall through to INI which would misinterpret TOML syntax.
+    if(looksLikeToml)
+    {
+        writeLog(0, "Load external configuration failed. Reason: TOML external config must define a non-zero 'version' field", LOG_LEVEL_ERROR);
+        return -1;
     }
 
     INIReader ini;
